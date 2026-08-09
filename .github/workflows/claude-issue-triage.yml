@@ -50,6 +50,8 @@ jobs:
                  - **Suggested labels**: the labels you applied and why
                - A closing note thanking the contributor
 
+               The comment body must be written in GitHub-flavored Markdown (headings, bold, bullet/numbered lists, code blocks where relevant) so it renders correctly on GitHub.
+
             Use the `gh` CLI to apply labels and post the comment. Example commands:
               gh issue edit ${{ github.event.issue.number }} --add-label "bug" --repo ${{ github.repository }}
               gh issue comment ${{ github.event.issue.number }} --body "..." --repo ${{ github.repository }}
