@@ -125,6 +125,29 @@ body {
   border-radius: 4px;
 }
 
+/* ---- Badge de pieza de tinte ---- */
+.dye-badge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c46bff, #ff6b6b);
+  background-size: 200% 100%;
+  animation: dye-shift 2s linear infinite;
+}
+
+.dye-badge.hidden {
+  display: none;
+}
+
+@keyframes dye-shift {
+  to { background-position: -200% 0; }
+}
+
 /* ---- Theme toggle ---- */
 .theme-switch {
   display: inline-flex;

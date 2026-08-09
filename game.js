@@ -28,6 +28,11 @@ const PIECES = [
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
+const WILD = 8;        // celda comodín en el tablero
+const DYE = 9;          // celda de la pieza de tinte (solo en vuelo/preview)
+const DYE_EVERY = 5;   // líneas acumuladas para conceder una pieza de tinte
+const WILD_SCORE = 25; // puntos por comodín eliminado (x nivel)
+
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -40,10 +45,12 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
+const dyeBadge = document.getElementById('dye-badge');
 
 const THEME_KEY = 'tetris-theme';
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId,
+    linesSinceDye, dyePending;
 
 function applyTheme(theme) {
   document.body.classList.toggle('light-mode', theme === 'light');
@@ -71,6 +78,10 @@ function randomPiece() {
   const type = Math.floor(Math.random() * 7) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+}
+
+function dyePiece() {
+  return { type: DYE, shape: [[DYE, DYE], [DYE, DYE]], x: Math.floor(COLS / 2) - 1, y: 0 };
 }
 
 function collide(shape, ox, oy) {
@@ -114,7 +125,51 @@ function merge() {
         board[current.y + r][current.x + c] = current.shape[r][c];
 }
 
-function clearLines() {
+// Regla determinista: para cada columna ocupada por la pieza se mira la celda
+// inmediatamente debajo de su bloque más bajo. Se ignoran suelo, vacíos y
+// comodines. Gana el color más frecuente; en caso de empate, el de menor índice.
+// Devuelve 0 si no hay ningún color objetivo.
+function landingColor() {
+  const shape = current.shape;
+  const counts = new Array(8).fill(0);
+  for (let c = 0; c < shape[0].length; c++) {
+    let bottom = -1;
+    for (let r = 0; r < shape.length; r++) if (shape[r][c]) bottom = r;
+    if (bottom === -1) continue;
+    const by = current.y + bottom + 1;
+    const bx = current.x + c;
+    if (by >= ROWS) continue;
+    const v = board[by][bx];
+    if (v >= 1 && v <= 7) counts[v]++;
+  }
+  let best = 0;
+  for (let t = 1; t <= 7; t++) if (counts[t] > counts[best]) best = t;
+  return best;
+}
+
+function applyDye() {
+  const target = landingColor();
+  merge();
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) {
+      const v = board[r][c];
+      if (v === DYE || (target && v === target)) board[r][c] = WILD;
+    }
+}
+
+// Compacta cada columna hacia abajo (los bloques caen a los huecos que dejan los comodines).
+function applyGravity() {
+  for (let c = 0; c < COLS; c++) {
+    let write = ROWS - 1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (!board[r][c]) continue;
+      if (write !== r) { board[write][c] = board[r][c]; board[r][c] = 0; }
+      write--;
+    }
+  }
+}
+
+function scanFullRows() {
   let cleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
     if (board[r].every(v => v !== 0)) {
@@ -124,13 +179,38 @@ function clearLines() {
       r++;
     }
   }
-  if (cleared) {
-    lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateHUD();
+  return cleared;
+}
+
+function clearLines() {
+  let cleared = scanFullRows();
+  if (!cleared) return;
+  let gained = (LINE_SCORES[Math.min(cleared, 4)] || 0) * level;
+
+  // cualquier línea completada consume TODOS los comodines supervivientes
+  let wilds = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (board[r][c] === WILD) { board[r][c] = 0; wilds++; }
+
+  if (wilds) {
+    applyGravity();
+    const extra = scanFullRows(); // 1 pasada de cascada
+    if (extra) {
+      gained += (LINE_SCORES[Math.min(extra, 4)] || 0) * level;
+      cleared += extra;
+    }
   }
+
+  lines += cleared;
+  score += gained + wilds * WILD_SCORE * level;
+  level = Math.floor(lines / 10) + 1;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+
+  linesSinceDye += cleared;
+  if (linesSinceDye >= DYE_EVERY) { linesSinceDye -= DYE_EVERY; dyePending = true; }
+
+  updateHUD();
 }
 
 function ghostY() {
@@ -157,14 +237,15 @@ function softDrop() {
 }
 
 function lockPiece() {
-  merge();
+  if (current.type === DYE) applyDye(); else merge();
   clearLines();
   spawn();
 }
 
 function spawn() {
   current = next;
-  next = randomPiece();
+  if (dyePending) { next = dyePiece(); dyePending = false; }
+  else { next = randomPiece(); }
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -179,8 +260,20 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
   context.globalAlpha = alpha ?? 1;
+
+  if (colorIndex >= WILD) {
+    // comodín (8) y pieza de tinte (9): tinte arcoíris animado
+    const hue = (performance.now() / 8 + (x + y) * 25) % 360;
+    context.fillStyle = `hsl(${hue}, 85%, 60%)`;
+    context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.fillStyle = 'rgba(255,255,255,0.35)';
+    context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+    context.globalAlpha = 1;
+    return;
+  }
+
+  const color = COLORS[colorIndex];
   context.fillStyle = color;
   context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
   // highlight
@@ -237,6 +330,7 @@ function drawNext() {
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+  dyeBadge.classList.toggle('hidden', next.type !== DYE);
 }
 
 function endGame() {
@@ -288,6 +382,8 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  linesSinceDye = 0;
+  dyePending = false;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
