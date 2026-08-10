@@ -40,10 +40,17 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
-const overlay = document.getElementById('overlay');
-const overlayTitle = document.getElementById('overlay-title');
-const overlayScore = document.getElementById('overlay-score');
-const restartBtn = document.getElementById('restart-btn');
+const goOverlay = document.getElementById('gameover-overlay');
+const goTitle = document.getElementById('go-title');
+const goScore = document.getElementById('go-score');
+const goStats = document.getElementById('go-stats');
+const goRecordForm = document.getElementById('go-record-form');
+const recordNameInput = document.getElementById('record-name');
+const saveRecordBtn = document.getElementById('save-record-btn');
+const goRecordsContainer = document.getElementById('go-records');
+const goRestartBtn = document.getElementById('go-restart-btn');
+const goResetRecordsBtn = document.getElementById('go-reset-records-btn');
+const pauseIndicator = document.getElementById('pause-indicator');
 const themeToggle = document.getElementById('theme-toggle');
 const dyeBadge = document.getElementById('dye-badge');
 
@@ -69,6 +76,82 @@ themeToggle.addEventListener('change', () => {
 });
 
 initTheme();
+
+// ---- Records (localStorage) ----
+const RECORDS_KEY = 'tetris-records';
+const MAX_RECORDS = 5;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function loadRecords() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter(r => r && typeof r.score === 'number')
+      .map(r => ({
+        name: String(r.name || 'ANON').slice(0, 12),
+        score: r.score | 0,
+        lines: r.lines | 0,
+        level: r.level | 0,
+        combo: r.combo | 0,
+        maxLines: r.maxLines | 0,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_RECORDS);
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRecords(list) {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(list)); } catch (e) { /* storage bloqueado */ }
+}
+
+function qualifies(sc) {
+  if (sc <= 0) return false;
+  const list = loadRecords();
+  return list.length < MAX_RECORDS || sc > list[list.length - 1].score;
+}
+
+function addRecord(entry) {
+  const list = loadRecords();
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  const top = list.slice(0, MAX_RECORDS);
+  saveRecords(top);
+  return top.indexOf(entry);
+}
+
+function resetRecords() { saveRecords([]); }
+
+function bestStats() {
+  const list = loadRecords();
+  return {
+    combo: list.reduce((m, r) => Math.max(m, r.combo), 0),
+    maxLines: list.reduce((m, r) => Math.max(m, r.maxLines), 0),
+  };
+}
+
+function renderRecords(container, highlightIndex) {
+  const list = loadRecords();
+  if (!list.length) {
+    container.innerHTML = '<p class="records-empty">Sin records todavía</p>';
+    return;
+  }
+  const rows = list.map((r, i) =>
+    `<tr class="${i === highlightIndex ? 'record-new' : ''}">` +
+    `<td>${i + 1}</td><td>${escapeHtml(r.name)}</td>` +
+    `<td>${r.score.toLocaleString()}</td><td>${r.lines}</td><td>${r.combo}</td></tr>`
+  ).join('');
+  container.innerHTML =
+    '<table class="records-table"><thead><tr>' +
+    '<th>#</th><th>NOMBRE</th><th>PUNTOS</th><th>LÍN</th><th>COMBO</th>' +
+    `</tr></thead><tbody>${rows}</tbody></table>`;
+}
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -333,25 +416,58 @@ function drawNext() {
   dyeBadge.classList.toggle('hidden', next.type !== DYE);
 }
 
+let lastRunStats = { combo: 0, maxLines: 0 };
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
-  overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
-  overlay.classList.remove('hidden');
+
+  lastRunStats = typeof runStats === 'function' ? runStats() : { combo: 0, maxLines: 0 };
+
+  goTitle.textContent = 'GAME OVER';
+  goScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  goStats.textContent =
+    `Líneas: ${lines} · Nivel: ${level} · Mejor combo: ${lastRunStats.combo} · Máx. líneas: ${lastRunStats.maxLines}`;
+
+  const qualifiesNow = qualifies(score);
+  goRecordForm.classList.toggle('hidden', !qualifiesNow);
+  goRecordForm.classList.toggle('record-qualifies', qualifiesNow);
+  recordNameInput.value = '';
+  recordNameInput.disabled = false;
+  saveRecordBtn.disabled = false;
+
+  renderRecords(goRecordsContainer);
+  goOverlay.classList.remove('hidden');
+}
+
+function saveCurrentRecord() {
+  if (saveRecordBtn.disabled) return;
+  const entry = {
+    name: recordNameInput.value.trim() || 'ANON',
+    score,
+    lines,
+    level,
+    combo: lastRunStats.combo,
+    maxLines: lastRunStats.maxLines,
+  };
+  const idx = addRecord(entry);
+  renderRecords(goRecordsContainer, idx);
+  recordNameInput.disabled = true;
+  saveRecordBtn.disabled = true;
+  goRecordForm.classList.add('hidden');
 }
 
 function togglePause() {
   if (gameOver) return;
   paused = !paused;
+  pauseIndicator.classList.toggle('hidden', !paused);
   if (!paused) {
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    // Indicador mínimo provisional: el overlay de pausa completo lo añade otro
+    // agente en paralelo (elemento hermano independiente, p. ej. #pause-overlay).
   }
 }
 
@@ -388,7 +504,8 @@ function init() {
   next = randomPiece();
   spawn();
   updateHUD();
-  overlay.classList.add('hidden');
+  goOverlay.classList.add('hidden');
+  pauseIndicator.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -418,6 +535,18 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+goRestartBtn.addEventListener('click', init);
+
+saveRecordBtn.addEventListener('click', saveCurrentRecord);
+recordNameInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter') saveCurrentRecord();
+});
+
+goResetRecordsBtn.addEventListener('click', () => {
+  if (confirm('¿Borrar todos los records?')) {
+    resetRecords();
+    renderRecords(goRecordsContainer);
+  }
+});
 
 init();

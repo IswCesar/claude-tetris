@@ -238,21 +238,28 @@ kbd {
   align-items: center;
 }
 
-#overlay-title {
+#go-title {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 4px;
   color: var(--overlay-title-color);
 }
 
-#overlay-score {
+#go-score {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   color: var(--overlay-score-color);
 }
 
-#restart-btn {
-  margin-top: 8px;
+.go-stats {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: var(--label-color);
+  max-width: 260px;
+}
+
+.btn {
+  margin-top: 4px;
   background: var(--btn-bg);
   color: var(--btn-fg);
   border: none;
@@ -265,6 +272,117 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+.btn:hover {
   background: var(--btn-hover-bg);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--overlay-title-color);
+  border: 1px solid var(--overlay-title-color);
+  padding: 8px 20px;
+  font-size: 12px;
+}
+
+.btn-secondary:hover {
+  background: var(--overlay-title-color);
+  color: var(--btn-fg);
+}
+
+.go-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ---- Records (tabla de puntuaciones) ---- */
+.record-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.record-form.hidden {
+  display: none;
+}
+
+.record-form.record-qualifies {
+  border: 1px solid var(--overlay-title-color);
+  box-shadow: 0 0 12px var(--title-shadow);
+}
+
+#record-name {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: var(--board-bg);
+  color: var(--fg);
+  border: 1px solid var(--board-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  width: 130px;
+}
+
+#record-name:focus {
+  outline: none;
+  border-color: var(--value-color);
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.records-table th,
+.records-table td {
+  padding: 4px 10px;
+  text-align: center;
+}
+
+.records-table th {
+  color: var(--label-color);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.records-table td:nth-child(2) {
+  text-align: left;
+}
+
+.record-new {
+  color: var(--value-color);
+  font-weight: 700;
+}
+
+.records-empty {
+  font-size: 12px;
+  color: var(--label-color);
+}
+
+/* ---- Indicador de pausa (provisional: el overlay de pausa completo lo añade
+   otro agente en paralelo como elemento hermano independiente) ---- */
+.pause-indicator {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: var(--overlay-bg);
+  color: var(--overlay-title-color);
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+}
+
+.pause-indicator.hidden {
+  display: none;
 }
