@@ -268,3 +268,48 @@ kbd {
 #restart-btn:hover {
   background: var(--btn-hover-bg);
 }
+
+/* ---- Skins ---- */
+#skin-select {
+  width: fit-content;
+  background: var(--kbd-bg);
+  color: var(--kbd-color);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+body.skin-neon {
+  --bg: #000000;
+  --board-bg: #05050a;
+  --grid-color: #1a1a2a;
+  --title-color: #39ff14;
+  --title-shadow: rgba(57, 255, 20, 0.6);
+  --board-border: #39ff14;
+  --value-color: #39ff14;
+}
+
+body.skin-pastel {
+  --bg: #fdf6f0;
+  --board-bg: #fffaf5;
+  --grid-color: #f0e4e8;
+  --title-color: #f4a6c1;
+  --title-shadow: rgba(244, 166, 193, 0.4);
+  --board-border: #f0d5e0;
+  /* propio, no el del tema activo: garantiza contraste sobre el fondo claro del skin */
+  --value-color: #c2185b;
+}
+
+body.skin-pixel {
+  --bg: #101018;
+  --board-bg: #16161f;
+  --grid-color: #2a2a38;
+  --title-color: #ffd54f;
+  --title-shadow: rgba(255, 213, 79, 0.4);
+  --board-border: #4a4a5a;
+  /* propio, no el del tema activo: garantiza contraste sobre el fondo oscuro del skin */
+  --value-color: #ffd54f;
+}
