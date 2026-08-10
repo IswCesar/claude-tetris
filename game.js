@@ -46,11 +46,21 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const dyeBadge = document.getElementById('dye-badge');
+const pauseOverlay = document.getElementById('pause-overlay');
+const pauseMainPanel = document.getElementById('pause-main');
+const pauseControlsPanel = document.getElementById('pause-controls');
+const resumeBtn = document.getElementById('resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const controlsBtn = document.getElementById('controls-btn');
+const backBtn = document.getElementById('back-btn');
+const startLevelSelect = document.getElementById('start-level');
 
 const THEME_KEY = 'tetris-theme';
+const START_LEVEL_KEY = 'tetris-start-level';
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId,
+let board, current, next, score, lines, level, gameOver, lastTime, dropAccum, dropInterval, animId,
     linesSinceDye, dyePending;
+let menuOpen, startLevel, activeStartLevel;
 
 function applyTheme(theme) {
   document.body.classList.toggle('light-mode', theme === 'light');
@@ -69,6 +79,29 @@ themeToggle.addEventListener('change', () => {
 });
 
 initTheme();
+
+function loadStartLevel() {
+  let saved = 1;
+  try {
+    const stored = parseInt(localStorage.getItem(START_LEVEL_KEY), 10);
+    if (stored >= 1 && stored <= 15) saved = stored;
+  } catch (e) {}
+  return saved;
+}
+
+function initStartLevel() {
+  startLevel = loadStartLevel();
+  startLevelSelect.value = String(startLevel);
+}
+
+startLevelSelect.addEventListener('change', () => {
+  startLevel = parseInt(startLevelSelect.value, 10);
+  try {
+    localStorage.setItem(START_LEVEL_KEY, String(startLevel));
+  } catch (e) {}
+});
+
+initStartLevel();
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -204,7 +237,7 @@ function clearLines() {
 
   lines += cleared;
   score += gained + wilds * WILD_SCORE * level;
-  level = Math.floor(lines / 10) + 1;
+  level = activeStartLevel + Math.floor(lines / 10);
   dropInterval = Math.max(100, 1000 - (level - 1) * 90);
 
   linesSinceDye += cleared;
@@ -341,18 +374,32 @@ function endGame() {
   overlay.classList.remove('hidden');
 }
 
+function showPauseMainPanel() {
+  pauseControlsPanel.classList.add('hidden');
+  pauseMainPanel.classList.remove('hidden');
+}
+
+function openPauseMenu() {
+  if (gameOver || menuOpen) return;
+  menuOpen = true;
+  cancelAnimationFrame(animId);
+  showPauseMainPanel();
+  pauseOverlay.classList.remove('hidden');
+}
+
+function closePauseMenu() {
+  if (!menuOpen) return;
+  menuOpen = false;
+  pauseOverlay.classList.add('hidden');
+  draw();
+  lastTime = performance.now();
+  loop(lastTime);
+}
+
 function togglePause() {
   if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
-  }
+  if (menuOpen) closePauseMenu();
+  else openPauseMenu();
 }
 
 function loop(ts) {
@@ -377,10 +424,11 @@ function init() {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
-  paused = false;
+  activeStartLevel = startLevel;
+  level = activeStartLevel;
+  menuOpen = false;
   gameOver = false;
-  dropInterval = 1000;
+  dropInterval = Math.max(100, 1000 - (activeStartLevel - 1) * 90);
   dropAccum = 0;
   linesSinceDye = 0;
   dyePending = false;
@@ -389,13 +437,14 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  pauseOverlay.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+  if (menuOpen || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -419,5 +468,13 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+resumeBtn.addEventListener('click', closePauseMenu);
+pauseRestartBtn.addEventListener('click', init);
+controlsBtn.addEventListener('click', () => {
+  pauseMainPanel.classList.add('hidden');
+  pauseControlsPanel.classList.remove('hidden');
+});
+backBtn.addEventListener('click', showPauseMainPanel);
 
 init();
