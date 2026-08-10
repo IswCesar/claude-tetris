@@ -40,6 +40,8 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const comboSection = document.getElementById('combo-section');
+const comboEl = document.getElementById('combo');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
@@ -51,6 +53,7 @@ const THEME_KEY = 'tetris-theme';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId,
     linesSinceDye, dyePending;
+let combo, bestCombo, maxLinesOnce;
 
 function applyTheme(theme) {
   document.body.classList.toggle('light-mode', theme === 'light');
@@ -184,7 +187,7 @@ function scanFullRows() {
 
 function clearLines() {
   let cleared = scanFullRows();
-  if (!cleared) return;
+  if (!cleared) return 0;
   let gained = (LINE_SCORES[Math.min(cleared, 4)] || 0) * level;
 
   // cualquier línea completada consume TODOS los comodines supervivientes
@@ -211,6 +214,7 @@ function clearLines() {
   if (linesSinceDye >= DYE_EVERY) { linesSinceDye -= DYE_EVERY; dyePending = true; }
 
   updateHUD();
+  return cleared;
 }
 
 function ghostY() {
@@ -238,7 +242,19 @@ function softDrop() {
 
 function lockPiece() {
   if (current.type === DYE) applyDye(); else merge();
-  clearLines();
+  const cleared = clearLines();
+  if (cleared > 0) {
+    combo++;
+    if (combo > bestCombo) bestCombo = combo;
+    if (cleared > maxLinesOnce) maxLinesOnce = cleared;
+  } else {
+    combo = 0;
+  }
+  // clearLines() ya llamó a updateHUD(), pero con el combo previo a este lock
+  // (se calcula arriba). Se repite aquí para que el HUD del combo quede
+  // correcto también en el camino de caída por gravedad (loop()), que no
+  // vuelve a llamar a updateHUD() tras lockPiece().
+  updateHUD();
   spawn();
 }
 
@@ -256,6 +272,8 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  comboEl.textContent = combo;
+  comboSection.classList.toggle('hidden', combo < 2);
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -384,6 +402,9 @@ function init() {
   dropAccum = 0;
   linesSinceDye = 0;
   dyePending = false;
+  combo = 0;
+  bestCombo = 0;
+  maxLinesOnce = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
@@ -419,5 +440,10 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+// Estadísticas de la partida actual, consumidas por la pantalla de inicio y game-over.
+function runStats() {
+  return { combo: bestCombo, maxLines: maxLinesOnce };
+}
 
 init();

@@ -268,3 +268,14 @@ kbd {
 #restart-btn:hover {
   background: var(--btn-hover-bg);
 }
+
+/* ---- Utilidad genérica ---- */
+.hidden {
+  display: none;
+}
+
+/* ---- Combo ---- */
+#combo-section .value {
+  color: var(--overlay-title-color);
+  text-shadow: 0 0 12px var(--title-shadow);
+}
