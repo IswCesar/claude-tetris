@@ -253,7 +253,6 @@ kbd {
 
 /* ---- Menú de pausa ---- */
 .btn {
-  margin-top: 8px;
   background: var(--btn-bg);
   color: var(--btn-fg);
   border: none;
