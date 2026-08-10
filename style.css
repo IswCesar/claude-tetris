@@ -251,8 +251,8 @@ kbd {
   color: var(--overlay-score-color);
 }
 
-#restart-btn {
-  margin-top: 8px;
+/* ---- Menú de pausa ---- */
+.btn {
   background: var(--btn-bg);
   color: var(--btn-fg);
   border: none;
@@ -265,6 +265,66 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+.btn:hover {
   background: var(--btn-hover-bg);
+}
+
+#pause-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--overlay-score-color);
+}
+
+.pause-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pause-level-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--controls-color);
+}
+
+.pause-level-select select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.pause-panel ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pause-panel li {
+  font-size: 13px;
+  color: var(--controls-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* ---- Utilidad genérica ---- */
+/* Debe ser la última regla del archivo: misma especificidad (0,1,0) que
+   .overlay/.pause-panel/etc, así que gana por orden de aparición y
+   garantiza que cualquier elemento con .hidden quede oculto. */
+.hidden {
+  display: none;
 }
