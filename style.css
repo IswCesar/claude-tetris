@@ -251,11 +251,6 @@ kbd {
   color: var(--overlay-score-color);
 }
 
-/* ---- Utilidad genérica ---- */
-.hidden {
-  display: none;
-}
-
 /* ---- Menú de pausa ---- */
 .btn {
   margin-top: 8px;
@@ -325,4 +320,12 @@ kbd {
   align-items: center;
   justify-content: center;
   gap: 4px;
+}
+
+/* ---- Utilidad genérica ---- */
+/* Debe ser la última regla del archivo: misma especificidad (0,1,0) que
+   .overlay/.pause-panel/etc, así que gana por orden de aparición y
+   garantiza que cualquier elemento con .hidden quede oculto. */
+.hidden {
+  display: none;
 }

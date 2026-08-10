@@ -99,6 +99,9 @@ startLevelSelect.addEventListener('change', () => {
   try {
     localStorage.setItem(START_LEVEL_KEY, String(startLevel));
   } catch (e) {}
+  // Devuelve el foco fuera del <select> para que P/Escape vuelvan a
+  // controlar el menú de pausa normalmente tras elegir un valor.
+  startLevelSelect.blur();
 });
 
 initStartLevel();
@@ -379,6 +382,11 @@ function showPauseMainPanel() {
   pauseMainPanel.classList.remove('hidden');
 }
 
+function showPauseControlsPanel() {
+  pauseMainPanel.classList.add('hidden');
+  pauseControlsPanel.classList.remove('hidden');
+}
+
 function openPauseMenu() {
   if (gameOver || menuOpen) return;
   menuOpen = true;
@@ -471,10 +479,7 @@ restartBtn.addEventListener('click', init);
 
 resumeBtn.addEventListener('click', closePauseMenu);
 pauseRestartBtn.addEventListener('click', init);
-controlsBtn.addEventListener('click', () => {
-  pauseMainPanel.classList.add('hidden');
-  pauseControlsPanel.classList.remove('hidden');
-});
+controlsBtn.addEventListener('click', showPauseControlsPanel);
 backBtn.addEventListener('click', showPauseMainPanel);
 
 init();
