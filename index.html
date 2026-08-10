@@ -56,13 +56,27 @@
       </aside>
     </div>
 
-    <div id="overlay" class="overlay hidden">
+    <div id="gameover-overlay" class="overlay hidden">
       <div class="overlay-box">
-        <p id="overlay-title">GAME OVER</p>
-        <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+        <p id="go-title">GAME OVER</p>
+        <p id="go-score"></p>
+        <p id="go-stats" class="go-stats"></p>
+
+        <div id="go-record-form" class="record-form hidden">
+          <input id="record-name" maxlength="12" placeholder="TU NOMBRE" autocomplete="off" />
+          <button id="save-record-btn" class="btn">Guardar</button>
+        </div>
+
+        <div id="go-records"></div>
+
+        <div class="go-buttons">
+          <button id="go-restart-btn" class="btn">Reiniciar</button>
+          <button id="go-reset-records-btn" class="btn btn-secondary">Resetear records</button>
+        </div>
       </div>
     </div>
+
+    <div id="pause-indicator" class="pause-indicator hidden">PAUSA · pulsa P para continuar</div>
   </div>
 
   <script src="game.js"></script>
