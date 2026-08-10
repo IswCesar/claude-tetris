@@ -63,6 +63,25 @@
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
+
+    <div id="start-overlay" class="overlay">
+      <div class="overlay-box start-box">
+        <h2 class="start-title">TETRIS</h2>
+        <div id="start-records"></div>
+        <div class="start-global-stats">
+          <div class="panel-section">
+            <span class="label">MEJOR COMBO</span>
+            <span class="value" id="start-best-combo">0</span>
+          </div>
+          <div class="panel-section">
+            <span class="label">MÁS LÍNEAS</span>
+            <span class="value" id="start-best-maxlines">0</span>
+          </div>
+        </div>
+        <button id="play-btn" class="btn">JUGAR</button>
+        <button id="reset-records-btn" class="btn btn-secondary">Resetear records</button>
+      </div>
+    </div>
   </div>
 
   <script src="game.js"></script>

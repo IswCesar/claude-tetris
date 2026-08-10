@@ -46,6 +46,12 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 const dyeBadge = document.getElementById('dye-badge');
+const startOverlay = document.getElementById('start-overlay');
+const startRecordsEl = document.getElementById('start-records');
+const startBestCombo = document.getElementById('start-best-combo');
+const startBestMaxLines = document.getElementById('start-best-maxlines');
+const playBtn = document.getElementById('play-btn');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
 
 const THEME_KEY = 'tetris-theme';
 
@@ -69,6 +75,82 @@ themeToggle.addEventListener('change', () => {
 });
 
 initTheme();
+
+// ---- Records (localStorage) ----
+const RECORDS_KEY = 'tetris-records';
+const MAX_RECORDS = 5;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function loadRecords() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter(r => r && typeof r.score === 'number')
+      .map(r => ({
+        name: String(r.name || 'ANON').slice(0, 12),
+        score: r.score | 0,
+        lines: r.lines | 0,
+        level: r.level | 0,
+        combo: r.combo | 0,
+        maxLines: r.maxLines | 0,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_RECORDS);
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRecords(list) {
+  try { localStorage.setItem(RECORDS_KEY, JSON.stringify(list)); } catch (e) { /* storage bloqueado */ }
+}
+
+function qualifies(sc) {
+  if (sc <= 0) return false;
+  const list = loadRecords();
+  return list.length < MAX_RECORDS || sc > list[list.length - 1].score;
+}
+
+function addRecord(entry) {
+  const list = loadRecords();
+  list.push(entry);
+  list.sort((a, b) => b.score - a.score);
+  const top = list.slice(0, MAX_RECORDS);
+  saveRecords(top);
+  return top.indexOf(entry);
+}
+
+function resetRecords() { saveRecords([]); }
+
+function bestStats() {
+  const list = loadRecords();
+  return {
+    combo: list.reduce((m, r) => Math.max(m, r.combo), 0),
+    maxLines: list.reduce((m, r) => Math.max(m, r.maxLines), 0),
+  };
+}
+
+function renderRecords(container, highlightIndex) {
+  const list = loadRecords();
+  if (!list.length) {
+    container.innerHTML = '<p class="records-empty">Sin records todavía</p>';
+    return;
+  }
+  const rows = list.map((r, i) =>
+    `<tr class="${i === highlightIndex ? 'record-new' : ''}">` +
+    `<td>${i + 1}</td><td>${escapeHtml(r.name)}</td>` +
+    `<td>${r.score.toLocaleString()}</td><td>${r.lines}</td><td>${r.combo}</td></tr>`
+  ).join('');
+  container.innerHTML =
+    '<table class="records-table"><thead><tr>' +
+    '<th>#</th><th>NOMBRE</th><th>PUNTOS</th><th>LÍN</th><th>COMBO</th>' +
+    `</tr></thead><tbody>${rows}</tbody></table>`;
+}
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -393,7 +475,32 @@ function init() {
   animId = requestAnimationFrame(loop);
 }
 
+// ---- Pantalla de inicio ----
+function updateStartStats() {
+  const stats = bestStats();
+  startBestCombo.textContent = stats.combo;
+  startBestMaxLines.textContent = stats.maxLines;
+}
+
+function startGame() {
+  startOverlay.classList.add('hidden');
+  init();
+}
+
+playBtn.addEventListener('click', startGame);
+
+resetRecordsBtn.addEventListener('click', () => {
+  if (!confirm('¿Borrar todos los records?')) return;
+  resetRecords();
+  renderRecords(startRecordsEl);
+  updateStartStats();
+});
+
 document.addEventListener('keydown', e => {
+  if (!startOverlay.classList.contains('hidden')) {
+    if (e.code === 'Enter') startGame();
+    return;
+  }
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -420,4 +527,5 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
-init();
+renderRecords(startRecordsEl);
+updateStartStats();
